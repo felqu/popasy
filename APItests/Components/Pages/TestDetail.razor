@@ -1,0 +1,104 @@
+@page "/tests/{Id:guid}"
+@inject WorkspaceStore Store
+@if (test == null) { <PageTitle>Тест не найден — Forma</PageTitle>
+<EmptyState Title="Тест не найден" Description="Возможно, сервер был перезапущен и демонстрационные данные обновились.">
+    <a href="/tests" class="btn btn-primary">В библиотеку</a>
+</EmptyState> }
+else {
+<PageTitle>@test.Title — Forma</PageTitle>
+<a href="/tests" class="back-link">
+    <Icon Name="back" />В библиотеку тестов</a>
+<PageHeader Eyebrow="БИБЛИОТЕКА ТЕСТОВ" Title="@test.Title" Description="@test.Description">
+    <button class="btn btn-primary" @onclick="() => assignOpen = true">
+        <Icon Name="users" />Назначить сотрудникам</button>
+</PageHeader>
+@if (Created) { <div class="alert alert-success" role="status">
+    <Icon Name="check-circle" />Тест сохранён в библиотеку. Теперь его можно назначить команде.</div> }
+@if (message != null) { <div class="alert alert-success" role="status">
+    <Icon Name="check-circle" />@message<a href="/results">К назначениям</a>
+</div> }
+<div class="detail-layout">
+    <section>
+        <div class="detail-questions-heading">
+            <h2>Вопросы теста <span class="count-pill">@test.Questions.Length</span>
+            </h2>
+            <span class="muted">Режим администратора · ответы открыты</span>
+        </div>@for (var i = 0; i < test.Questions.Length; i++) { var question = test.Questions[i]; <article class="panel question-view">
+            <span class="question-kicker">ВОПРОС @((i + 1).ToString("D2")) <span>Один правильный ответ</span>
+            </span>
+            <h3>@question.Text</h3>
+            <div class="answer-view-list">@for (var j = 0; j < question.Options.Length; j++) { <div class="answer-view @(j == question.CorrectIndex ? "correct" : "")">
+                    <span class="answer-letter">@((char)('A' + j))</span>
+                    <span>@question.Options[j]</span>@if (j == question.CorrectIndex) { <Icon Name="check" /> }</div> }</div>
+            <div class="explanation">
+                <Icon Name="help" />
+                <span>@question.Explanation</span>
+            </div>
+        </article> }</section>
+    <aside class="detail-sidebar">
+        <section class="panel">
+            <div class="panel-heading">
+                <h2>О тесте</h2>
+                <span class="tile-icon small violet">
+                    <Icon Name="tests" />
+                </span>
+            </div>
+            <dl class="detail-facts">
+                <div>
+                    <dt>Для кого</dt>
+                    <dd>@test.Department</dd>
+                </div>
+                <div>
+                    <dt>Уровень</dt>
+                    <dd>@test.Level</dd>
+                </div>
+                <div>
+                    <dt>Вопросов</dt>
+                    <dd>@test.Questions.Length</dd>
+                </div>
+                <div>
+                    <dt>Ориентир по времени</dt>
+                    <dd>@test.DurationMinutes мин.</dd>
+                </div>
+                <div>
+                    <dt>Проходной балл</dt>
+                    <dd>@test.PassScore%</dd>
+                </div>
+                <div>
+                    <dt>Создан</dt>
+                    <dd>@test.CreatedAt.ToString("dd.MM.yyyy")</dd>
+                </div>
+            </dl>
+            <div class="detail-source">
+                <Icon Name="@(test.AiCreated ? "sparkles" : "book")" />@(test.AiCreated ? "Демонстрационный банк ИИ" : "Демонстрационный экспертный тест")</div>
+        </section>
+        <section class="panel detail-stats">
+            <h2>Как идёт прохождение</h2>
+            <div>
+                <strong>@Store.Assignments.Count(a => a.TestId == test.Id)</strong>
+                <span>назначений всего</span>
+            </div>
+            <div>
+                <strong>@Store.Assignments.Count(a => a.TestId == test.Id && a.CompletedAt != null)</strong>
+                <span>тестов завершено</span>
+            </div>
+            <a class="text-link" href="/results?test=@test.Id">Смотреть результаты<Icon Name="arrow" />
+            </a>
+        </section>
+        <div class="review-note">
+            <Icon Name="shield" />
+            <p>Проверьте вопросы на соответствие вашим процессам перед использованием в реальной оценке.</p>
+        </div>
+    </aside>
+</div>
+@if (assignOpen) { <AssignTestModal TestId="Id" OnClose="() => assignOpen = false" OnSaved="Assigned" /> }
+    }
+@code {
+    [Parameter] public Guid Id { get; set; }
+    [SupplyParameterFromQuery(Name = "created")] public bool Created { get; set; }
+    private PersonnelTest? test;
+    private bool assignOpen;
+    private string? message;
+    protected override void OnParametersSet() { test = Store.FindTest(Id); message = null; }
+    private void Assigned(int count) { assignOpen = false; Created = false; message = $"Создано назначений: {count}."; }
+}

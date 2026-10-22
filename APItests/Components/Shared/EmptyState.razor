@@ -1,0 +1,12 @@
+<div class="empty-state">
+    <span class="empty-icon">
+        <Icon Name="@IconName" />
+    </span>
+    <h3>@Title</h3>
+    <p>@Description</p>@ChildContent</div>
+@code {
+    [Parameter] public string IconName { get; set; } = "search";
+    [Parameter] public string Title { get; set; } = "Ничего не найдено";
+    [Parameter] public string Description { get; set; } = "Попробуйте изменить запрос или сбросить фильтры.";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

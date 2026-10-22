@@ -1,0 +1,123 @@
+@page "/take/{Id:guid}"
+@inject WorkspaceStore Store
+<PageTitle>Прохождение теста — Forma</PageTitle>
+@if (assignment == null || test == null || employee == null) { <EmptyState Title="Назначение не найдено" Description="Демонстрационные данные могли обновиться после перезапуска сервера.">
+    <a href="/results" class="btn btn-primary">К результатам</a>
+</EmptyState> }
+else {
+<a href="/results" class="back-link">
+    <Icon Name="back" />К результатам команды</a>
+<PageHeader Eyebrow="ДЕМО-ПРОХОЖДЕНИЕ" Title="@test.Title" Description="@($"Участник: {employee.Name} · {employee.Department}")">
+    <span class="badge badge-neutral">
+        <Icon Name="clock" />Ориентир: @test.DurationMinutes мин.</span>
+</PageHeader>
+@if (assignment.CompletedAt != null) { var passed = assignment.Score >= test.PassScore; <section class="panel result-complete">
+    <span class="result-symbol @(passed ? "green" : "peach")">
+        <Icon Name="@(passed ? "check-circle" : "book")" />
+    </span>
+    <span class="eyebrow">ЕЩЁ ОДИН ШАГ ВПЕРЁД</span>
+    <h2>@(passed ? "Отличная работа!" : "Теперь вы знаете, над чем поработать")</h2>
+    <p>@(passed ? "Тест пройден. Новые знания — новые возможности." : "Вернитесь к материалам и обсудите сложные вопросы с наставником.")</p>
+    <strong class="final-score @(passed ? "positive" : "warning-text")">@assignment.Score<span>%</span>
+    </strong>
+    <div class="result-score-meta">
+        <span>Проходной балл <strong>@test.PassScore%</strong>
+        </span>
+        <span>Завершён <strong>@assignment.CompletedAt.Value.ToString("dd.MM.yyyy HH:mm")</strong>
+        </span>
+    </div>
+    <a href="/results" class="btn btn-primary">К результатам команды<Icon Name="arrow" />
+    </a>
+</section>
+@if (assignment.Answers != null) { <h2 class="review-heading">Разбор ответов</h2>@for (var i = 0; i < test.Questions.Length; i++) { var q = test.Questions[i]; var answer = assignment.Answers[i]; <article class="panel question-view">
+    <span class="question-kicker">ВОПРОС @(i + 1)<span class="@(answer == q.CorrectIndex ? "positive" : "warning-text")">@(answer == q.CorrectIndex ? "Верно" : "Есть что повторить")</span>
+    </span>
+    <h3>@q.Text</h3>
+    <p class="review-answer">Ваш ответ: <strong>@q.Options[answer]</strong>
+    </p>@if (answer != q.CorrectIndex) { <p class="review-answer positive">Правильный ответ: <strong>@q.Options[q.CorrectIndex]</strong>
+    </p> }<div class="explanation">
+        <Icon Name="help" />
+        <span>@q.Explanation</span>
+    </div>
+</article> } } else { <div class="info-note">Это пример результата из демонстрационного набора. Подробные ответы появятся у тестов, пройденных в этом пространстве.</div> }
+}
+else if (assignment.Deadline.Date < DateTime.Today) { <section class="panel">
+    <EmptyState IconName="clock" Title="Срок прохождения истёк" Description="Создайте новое назначение на странице результатов.">
+        <a href="/results" class="btn btn-primary">К назначениям</a>
+    </EmptyState>
+</section> }
+else if (!started) { <section class="panel take-intro">
+    <span class="tile-icon large violet">
+        <Icon Name="book" />
+    </span>
+    <h2>Готовы проверить свои знания?</h2>
+    <p>@test.Description</p>
+    <div class="take-intro-facts">
+        <span>
+            <Icon Name="tests" />
+            <strong>@test.Questions.Length</strong> вопросов</span>
+        <span>
+            <Icon Name="target" />
+            <strong>@test.PassScore%</strong> для прохождения</span>
+    </div>
+    <div class="info-note">В каждом вопросе один правильный ответ. Можно возвращаться к предыдущим вопросам. После завершения вы увидите результат и объяснения.</div>
+    <button class="btn btn-primary" @onclick="() => started = true">Начать тест<Icon Name="arrow" />
+    </button>
+    <small class="muted">Демонстрация: вы проходите тест от имени @employee.Name.</small>
+</section> }
+else { var current = test.Questions[step]; <div class="take-layout">
+    <section class="panel take-question">
+        <div class="question-kicker">
+            <span>ВОПРОС @((step + 1).ToString("D2")) <span>ИЗ @test.Questions.Length.ToString("D2")</span>
+            </span>
+            <span>Один правильный ответ</span>
+        </div>
+        <div class="progress-track take-progress">
+            <i style="width:@((step + 1) * 100 / test.Questions.Length)%"></i>
+        </div>
+        <h2>@current.Text</h2>
+        <div class="take-options">@for (var i = 0; i < current.Options.Length; i++) { var option = i; <label class="take-option @(answers[step] == option ? "selected" : "")">
+                <input type="radio" name="@($"question-{step}")" checked="@(answers[step] == option)" @onchange="() => answers[step] = option" />
+                <span class="answer-letter">@((char)('A' + option))</span>
+                <span>@current.Options[option]</span>
+            </label> }</div>@if (error != null) { <div class="alert alert-error" role="alert">@error</div> }<div class="take-actions">
+            <button class="btn btn-secondary" disabled="@(step == 0)" @onclick="() => { step--; error = null; }">
+                <Icon Name="back" />Назад</button>@if (step < test.Questions.Length - 1) { <button class="btn btn-primary" @onclick="Next">Следующий вопрос<Icon Name="arrow" />
+            </button> } else { <button class="btn btn-primary" @onclick="Finish">Завершить тест<Icon Name="check" />
+            </button> }</div>
+    </section>
+    <aside class="panel take-navigation">
+        <h3>Ваш прогресс</h3>
+        <p>@answers.Count(a => a >= 0) из @test.Questions.Length вопросов</p>
+        <div class="question-dots">@for (var i = 0; i < answers.Length; i++) { var index = i; <button class="@(step == index ? "current" : answers[index] >= 0 ? "answered" : "")" aria-label="@($"Перейти к вопросу {index + 1}")" @onclick="() => { step = index; error = null; }">@(index + 1)</button> }</div>
+        <div class="info-note compact">Ответы можно изменить до завершения теста.</div>
+    </aside>
+</div> }
+}
+@code {
+    [Parameter] public Guid Id { get; set; }
+    private Assignment? assignment;
+    private PersonnelTest? test;
+    private Employee? employee;
+    private bool started;
+    private int step;
+    private int[] answers = [];
+    private string? error;
+    protected override void OnParametersSet()
+    {
+        assignment = Store.Assignments.FirstOrDefault(a => a.Id == Id);
+        test = assignment == null ? null : Store.FindTest(assignment.TestId);
+        employee = assignment == null ? null : Store.FindEmployee(assignment.EmployeeId);
+        answers = Enumerable.Repeat(-1, test?.Questions.Length ?? 0).ToArray();
+        started = false; step = 0; error = null;
+    }
+    private void Next() { if (answers[step] < 0) error = "Выберите ответ, чтобы продолжить."; else { step++; error = null; } }
+    private void Finish()
+    {
+        error = null;
+        var missing = Array.FindIndex(answers, a => a < 0);
+        if (missing >= 0) { step = missing; error = "Ответьте на этот вопрос перед завершением теста."; return; }
+        try { assignment = Store.Complete(Id, answers); }
+        catch (ArgumentException ex) { error = ex.Message; }
+    }
+}

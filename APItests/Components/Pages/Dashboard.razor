@@ -1,0 +1,269 @@
+@page "/"
+@inject WorkspaceStore Store
+<PageTitle>Обзор — Forma</PageTitle>
+<PageHeader Title="Обзор" Description="Всё, что важно для развития вашей команды.">
+    <span class="date-label">
+        <Icon Name="calendar" />@DateTime.Today.ToString("d MMMM yyyy", Ru)</span>
+    <a href="/generator" class="btn btn-primary">
+        <Icon Name="plus" />Создать тест</a>
+</PageHeader>
+
+<section class="ai-hero">
+    <div class="hero-copy">
+        <span class="hero-tag">
+            <Icon Name="sparkles" /> ВАШ НОВЫЙ ИИ-ПОМОЩНИК</span>
+        <h2>От знаний —<br />к сильной команде<span>.</span>
+        </h2>
+        <p>Создавайте тесты под ваши задачи, оценивайте навыки<br class="desktop-break" /> и находите новые точки роста. Рутину берёт на себя ИИ.</p>
+        <a class="btn btn-dark" href="/generator">
+            <Icon Name="sparkles" />Сгенерировать тест<Icon Name="arrow" />
+        </a>
+        <span class="hero-footnote">Демонстрационный режим · без подключения к ИИ</span>
+    </div>
+    <div class="hero-art" aria-hidden="true">
+        <div class="orbit orbit-one"></div>
+        <div class="orbit orbit-two"></div>
+        <div class="art-dot dot-one"></div>
+        <div class="art-dot dot-two"></div>
+        <div class="floating-tag tag-one">
+            <span class="mini-circle green">
+                <Icon Name="check" />
+            </span>Под ваши задачи</div>
+        <div class="paper-card paper-back"></div>
+        <div class="paper-card paper-front">
+            <div class="paper-heading">
+                <span class="paper-ai">
+                    <Icon Name="sparkles" />
+                </span>
+                <span class="paper-pill">AI TEST</span>
+            </div>
+            <span class="paper-line line-title"></span>
+            <span class="paper-line line-subtitle"></span>
+            <div class="paper-option selected">
+                <span>✓</span>
+                <i></i>
+            </div>
+            <div class="paper-option">
+                <span></span>
+                <i></i>
+            </div>
+            <div class="paper-option">
+                <span></span>
+                <i></i>
+            </div>
+            <div class="paper-bottom">
+                <span></span>
+                <span>01 / 08</span>
+            </div>
+        </div>
+        <div class="floating-tag tag-two">
+            <Icon Name="sparkles" />
+            <span>
+                <strong>Вопросы готовы</strong>
+                <small>Осталось добавить ваш опыт</small>
+            </span>
+        </div>
+        <span class="art-star">✦</span>
+    </div>
+</section>
+
+<section class="metrics-grid" aria-label="Показатели пространства">
+    <div class="metric-card">
+        <div class="metric-top">
+            <span>Сотрудники</span>
+            <span class="metric-icon violet">
+                <Icon Name="users" />
+            </span>
+        </div>
+        <strong class="metric-value">@Store.Employees.Length<span>человек</span>
+        </strong>
+        <div class="metric-bottom">
+            <span class="status-dot"></span>В @Store.Employees.Select(e => e.Department).Distinct().Count() отделах компании</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-top">
+            <span>В библиотеке</span>
+            <span class="metric-icon blue">
+                <Icon Name="tests" />
+            </span>
+        </div>
+        <strong class="metric-value">@Store.Tests.Length<span>тестов</span>
+        </strong>
+        <div class="metric-bottom">
+            <Icon Name="sparkles" />@Store.Tests.Count(t => t.AiCreated) созданы с ИИ</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-top">
+            <span>Ожидают прохождения</span>
+            <span class="metric-icon peach">
+                <Icon Name="clock" />
+            </span>
+        </div>
+        <strong class="metric-value">@Store.Assignments.Count(a => a.CompletedAt == null)<span>назначений</span>
+        </strong>
+        <div class="metric-bottom">
+            <span class="status-dot orange"></span>@Store.Assignments.Count(a => a.CompletedAt == null && a.Deadline.Date < DateTime.Today) с истёкшим сроком</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-top">
+                    <span>Средний результат</span>
+                    <span class="metric-icon green">
+                        <Icon Name="target" />
+                    </span>
+                </div>
+                <strong class="metric-value">@AverageScore<span>%</span>
+                </strong>
+                <div class="metric-bottom">
+                    <Icon Name="check-circle" />По @Completed.Length завершённым тестам</div>
+            </div>
+        </section>
+
+        <section class="dashboard-middle">
+            <article class="panel activity-panel">
+                <div class="panel-heading">
+                    <div>
+                        <h2>Активность команды</h2>
+                        <p>Маленькие шаги к большим результатам</p>
+                    </div>
+                    <select class="compact-select" aria-label="Период активности" @bind="period">
+                        <option value="7">7 дней</option>
+                        <option value="14">14 дней</option>
+                        <option value="30">30 дней</option>
+                    </select>
+                </div>
+                <div class="chart-legend">
+                    <span>
+                        <i class="legend-dot purple"></i>Завершено</span>
+                    <span>
+                        <i class="legend-dot pale"></i>Назначено</span>
+                </div>
+                <div class="bar-chart">
+                    <div class="chart-y">
+                        <span>@ChartMax</span>
+                        <span>@(ChartMax / 2)</span>
+                        <span>0</span>
+                    </div>
+                    <div class="chart-plot">
+                        <div class="chart-gridlines">
+                            <i></i>
+                            <i></i>
+                            <i></i>
+                        </div>
+                        <div class="chart-bars">@foreach (var d in Enumerable.Range(0, period).Select(i => DateTime.Today.AddDays(-period + 1 + i))) { var assigned = Store.Assignments.Count(a => a.AssignedAt.Date == d); var completed = Completed.Count(a => a.CompletedAt!.Value.Date == d); <div class="chart-column" title="@($"{d:dd.MM}: назначено {assigned}, завершено {completed}")">
+                                <div class="bar-pair">
+                                    <div class="chart-bar pale-bar" style="height:@BarHeight(assigned)"></div>
+                                    <div class="chart-bar purple-bar" style="height:@BarHeight(completed)"></div>
+                                </div>
+                                <span>@(period <= 7 || (d - DateTime.Today.AddDays(-period + 1)).Days % (period / 7 + 1) == 0 ? d.ToString("dd.MM") : "")</span>
+                            </div> }</div>
+                    </div>
+                </div>
+                <div class="chart-summary">
+                    <span>
+                        <strong>@Completed.Count(a => a.CompletedAt >= DateTime.Today.AddDays(-period + 1))</strong> тестов завершено за период</span>
+                    <a href="/results" class="text-link">К результатам<Icon Name="arrow" />
+                    </a>
+                </div>
+            </article>
+            <article class="panel progress-panel">
+                <div class="panel-heading">
+                    <div>
+                        <h2>Знания в цифрах</h2>
+                        <p>Успешное прохождение тестов</p>
+                    </div>
+                    <span class="tile-icon small green">
+                        <Icon Name="target" />
+                    </span>
+                </div>
+                <div class="donut-wrap">
+                    <div class="donut" style="--progress:@(SuccessRate)%">
+                        <div>
+                            <strong>@SuccessRate<span>%</span>
+                            </strong>
+                            <small>успешных попыток</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="donut-legend">
+                    <span>
+                        <i class="legend-dot purple"></i>Сдали <strong>@PassedCount</strong>
+                    </span>
+                    <span>
+                        <i class="legend-dot pale"></i>Нужна практика <strong>@(Completed.Length - PassedCount)</strong>
+                    </span>
+                </div>
+                <div class="insight-note">
+                    <Icon Name="sparkles" />
+                    <span>Каждый результат — повод<br />для следующего шага в развитии.</span>
+                </div>
+            </article>
+        </section>
+
+        <section class="panel recent-panel">
+            <div class="panel-heading">
+                <div>
+                    <h2>В фокусе: ваши тесты</h2>
+                    <p>Продолжайте развивать то, что важно</p>
+                </div>
+                <a href="/tests" class="text-link">Вся библиотека<Icon Name="arrow" />
+                </a>
+            </div>
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>НАЗВАНИЕ ТЕСТА</th>
+                            <th>ДЛЯ КОГО</th>
+                            <th>ВОПРОСЫ</th>
+                            <th>ПРОХОЖДЕНИЕ</th>
+                            <th>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>@foreach (var test in Store.Tests.Take(3)) { var assignments = Store.Assignments.Where(a => a.TestId == test.Id).ToArray(); var done = assignments.Count(a => a.CompletedAt != null); <tr>
+                            <td>
+                                <a class="test-cell" href="/tests/@test.Id">
+                                    <span class="tile-icon @TestColor(test)">
+                                        <Icon Name="@TestIcon(test)" />
+                                    </span>
+                                    <span>
+                                        <strong>@test.Title</strong>
+                                        <small>@test.Level · @test.DurationMinutes мин.</small>
+                                    </span>
+                                </a>
+                            </td>
+                            <td>
+                                <span class="department-tag">@test.Department</span>
+                            </td>
+                            <td>
+                                <span class="muted">@test.Questions.Length вопросов</span>
+                            </td>
+                            <td>
+                                <div class="completion-cell">
+                                    <div class="progress-track">
+                                        <i style="width:@(assignments.Length == 0 ? 0 : done * 100 / assignments.Length)%"></i>
+                                    </div>
+                                    <span>@done / @assignments.Length</span>
+                                </div>
+                            </td>
+                            <td>
+                                <a class="icon-button" href="/tests/@test.Id" aria-label="@($"Открыть {test.Title}")">
+                                    <Icon Name="chevron" />
+                                </a>
+                            </td>
+                        </tr> }</tbody>
+                </table>
+            </div>
+        </section>
+@code {
+    private static readonly CultureInfo Ru = CultureInfo.GetCultureInfo("ru-RU");
+    private int period = 7;
+    private Assignment[] Completed => Store.Assignments.Where(a => a.CompletedAt != null).ToArray();
+    private int AverageScore => Completed.Length == 0 ? 0 : (int)Math.Round(Completed.Average(a => a.Score ?? 0));
+    private int PassedCount => Completed.Count(a => a.Score >= Store.FindTest(a.TestId)!.PassScore);
+    private int SuccessRate => Completed.Length == 0 ? 0 : (int)Math.Round(100.0 * PassedCount / Completed.Length);
+    private int ChartMax => Math.Max(4, Enumerable.Range(0, period).Select(i => DateTime.Today.AddDays(-i)).SelectMany(d => new[] { Store.Assignments.Count(a => a.AssignedAt.Date == d), Completed.Count(a => a.CompletedAt!.Value.Date == d) }).Max());
+    private string BarHeight(int count) => Math.Max(2, count * 145 / ChartMax) + "px";
+    private static string TestColor(PersonnelTest t) => t.Department == "Продажи" ? "peach" : t.Title.Contains("безопас") ? "blue" : "violet";
+    private static string TestIcon(PersonnelTest t) => t.Department == "Продажи" ? "users" : t.Title.Contains("безопас") ? "shield" : "book";
+}

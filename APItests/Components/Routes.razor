@@ -1,0 +1,16 @@
+<Router AppAssembly="typeof(Program).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)" />
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <LayoutView Layout="typeof(MainLayout)">
+            <div class="empty-state">
+                <Icon Name="search" />
+                <h1>Страница не найдена</h1>
+                <p>Возможно, адрес изменился. Вернитесь в рабочее пространство.</p>
+                <a href="/" class="btn btn-primary">На главную</a>
+            </div>
+        </LayoutView>
+    </NotFound>
+</Router>

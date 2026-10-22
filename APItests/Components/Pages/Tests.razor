@@ -1,0 +1,98 @@
+@page "/tests"
+@inject WorkspaceStore Store
+<PageTitle>Библиотека тестов — Forma</PageTitle>
+<PageHeader Eyebrow="ЗНАНИЯ, КОТОРЫЕ РАБОТАЮТ" Title="Библиотека тестов" Description="Ваши инструменты для оценки навыков и развития команды.">
+    <a href="/generator" class="btn btn-primary">
+        <Icon Name="plus" />Создать тест</a>
+</PageHeader>
+<div class="library-banner">
+    <span class="tile-icon violet">
+        <Icon Name="sparkles" />
+    </span>
+    <div>
+        <strong>Хороший тест начинается с вашей идеи</strong>
+        <p>Опишите тему — генератор предложит вопросы, которые можно отредактировать.</p>
+    </div>
+    <a href="/generator" class="text-link">Создать с ИИ<Icon Name="arrow" />
+    </a>
+</div>
+@if (message != null) { <div class="alert alert-success" role="status">
+    <Icon Name="check-circle" />@message<a href="/results">Посмотреть назначения</a>
+    <button class="icon-button" aria-label="Закрыть" @onclick="() => message = null">
+        <Icon Name="close" />
+    </button>
+</div> }
+<div class="section-toolbar">
+    <div class="segmented-tabs">
+        <button class="@(aiOnly ? "" : "selected")" @onclick="() => aiOnly = false">Все тесты <span>@Store.Tests.Length</span>
+        </button>
+        <button class="@(aiOnly ? "selected" : "")" @onclick="() => aiOnly = true">
+            <Icon Name="sparkles" />Созданы с ИИ <span>@Store.Tests.Count(t => t.AiCreated)</span>
+        </button>
+    </div>
+    <div class="toolbar-filters">
+        <div class="input-with-icon search-input">
+            <Icon Name="search" />
+            <input aria-label="Поиск тестов" placeholder="Найти тест…" @bind="search" @bind:event="oninput" />
+        </div>
+        <select aria-label="Фильтр по отделу" @bind="department">
+            <option value="">Все отделы</option>@foreach (var d in WorkspaceStore.Departments.Where(d => d != "Все отделы")) { <option>@d</option> }</select>
+    </div>
+</div>
+<div class="list-meta">
+    <span>@Filtered.Length тестов в библиотеке</span>
+    <span>Сначала новые</span>
+</div>
+@if (Filtered.Length == 0) { <div class="panel">
+    <EmptyState>
+        <button class="btn btn-secondary" @onclick="Reset">Сбросить фильтры</button>
+    </EmptyState>
+</div> }
+else { <section class="test-grid">@foreach (var test in Filtered) { var assignments = Store.Assignments.Where(a => a.TestId == test.Id).ToArray(); var done = assignments.Count(a => a.CompletedAt != null); <article class="test-card">
+        <div class="test-card-top">
+            <span class="tile-icon large @Color(test)">
+                <Icon Name="@Symbol(test)" />
+            </span>@if (test.AiCreated) { <span class="badge badge-ai">
+                <Icon Name="sparkles" />AI</span> } else { <span class="badge badge-neutral">Экспертный</span> }</div>
+        <span class="card-category">@test.Department.ToUpper(Ru)</span>
+        <h2>
+            <a href="/tests/@test.Id">@test.Title</a>
+        </h2>
+        <p class="test-description">@test.Description</p>
+        <div class="test-card-specs">
+            <span>
+                <Icon Name="tests" />@test.Questions.Length вопросов</span>
+            <span>
+                <Icon Name="clock" />@test.DurationMinutes мин.</span>
+            <span class="level-dot @Color(test)"></span>
+            <span>@test.Level</span>
+        </div>
+        <div class="test-card-progress">
+            <div>
+                <span>Завершили тест</span>
+                <strong>@done <span>/ @assignments.Length</span>
+                </strong>
+            </div>
+            <div class="progress-track">
+                <i style="width:@(assignments.Length == 0 ? 0 : done * 100 / assignments.Length)%"></i>
+            </div>
+        </div>
+        <div class="test-card-footer">
+            <a href="/tests/@test.Id" class="text-link">Открыть тест<Icon Name="arrow" />
+            </a>
+            <button class="btn btn-soft btn-small" @onclick="() => assignmentTest = test.Id">Назначить</button>
+        </div>
+    </article> }</section> }
+@if (assignmentTest != null) { <AssignTestModal TestId="assignmentTest" OnClose="() => assignmentTest = null" OnSaved="Assigned" /> }
+@code {
+    private static readonly CultureInfo Ru = CultureInfo.GetCultureInfo("ru-RU");
+    private string search = "", department = "";
+    private bool aiOnly;
+    private Guid? assignmentTest;
+    private string? message;
+    private PersonnelTest[] Filtered => Store.Tests.Where(t => (!aiOnly || t.AiCreated) && (department == "" || t.Department == department || t.Department == "Все отделы") && (t.Title + " " + t.Description).Contains(search, StringComparison.OrdinalIgnoreCase)).ToArray();
+    private void Reset() { search = department = ""; aiOnly = false; }
+    private void Assigned(int count) { assignmentTest = null; message = $"Создано назначений: {count}. Коллеги готовы к новому шагу!"; }
+    private static string Color(PersonnelTest t) => t.Department switch { "Продажи" => "peach", "Разработка" => "blue", "HR" => "green", _ => "violet" };
+    private static string Symbol(PersonnelTest t) => t.Title.Contains("безопас") ? "shield" : t.Department switch { "Продажи" => "users", "Разработка" => "target", "HR" => "book", _ => "chart" };
+}

@@ -1,0 +1,173 @@
+@page "/generator"
+@inject DemoQuestionGenerator GeneratorService
+@inject WorkspaceStore Store
+@inject NavigationManager Navigation
+<PageTitle>ИИ-генератор — Forma</PageTitle>
+<PageHeader Eyebrow="ОТ ИДЕИ ДО ГОТОВОГО ТЕСТА" Title="Немного магии. Много пользы." Description="Расскажите, какие знания вы хотите проверить. С остальным поможем.">
+    <span class="badge badge-demo">
+        <span class="status-dot"></span>Демо-генератор</span>
+</PageHeader>
+<div class="generator-layout">
+    <section class="panel generator-form">
+        <div class="panel-heading">
+            <div>
+                <h2>
+                    <Icon Name="sparkles" />Настроим ваш тест</h2>
+                <p>Хороший контекст — точные вопросы</p>
+            </div>
+            <span class="step-number">01</span>
+        </div>
+        <div class="form-body">
+            <label class="field-label" for="topic">Тема теста <span>*</span>
+            </label>
+            <input id="topic" maxlength="120" placeholder="Например, информационная безопасность" @bind="topic" @bind:event="oninput" />
+            <div class="topic-suggestions">@foreach (var suggestion in Suggestions) { <button class="suggestion-chip" @onclick="() => topic = suggestion">@suggestion</button> }</div>
+            <label class="field-label" for="context">На что обратить внимание <span class="optional">необязательно</span>
+            </label>
+            <textarea id="context" rows="3" maxlength="2000" placeholder="Укажите навыки, типичные ситуации или особенности работы команды…" @bind="context">
+            </textarea>
+            <small class="field-hint">В деморежиме тема и контекст выбирают подходящий банк примеров.</small>
+            <div class="form-row">
+                <div>
+                    <label class="field-label" for="gen-department">Для кого</label>
+                    <select id="gen-department" @bind="department">@foreach (var d in WorkspaceStore.Departments) { <option>@d</option> }</select>
+                </div>
+                <div>
+                    <label class="field-label" for="difficulty">Уровень</label>
+                    <select id="difficulty" @bind="difficulty">
+                        <option>Базовый</option>
+                        <option>Средний</option>
+                        <option>Продвинутый</option>
+                    </select>
+                </div>
+            </div>
+            <div class="field-label">Количество вопросов</div>
+            <div class="number-options">@foreach (var n in new[] { 3, 5, 8 }) { <button class="@(count == n ? "selected" : "")" @onclick="() => count = n">@n <span>вопросов</span>
+                </button> }</div>
+            <div class="form-row">
+                <div>
+                    <label class="field-label" for="duration">Время, минут</label>
+                    <input id="duration" type="number" min="5" max="120" @bind="duration" />
+                </div>
+                <div>
+                    <label class="field-label" for="pass-score">Проходной балл, %</label>
+                    <input id="pass-score" type="number" min="1" max="100" @bind="passScore" />
+                </div>
+            </div>
+            @if (error != null) { <div class="alert alert-error" role="alert">@error</div> }
+            <button class="btn btn-primary generate-button" disabled="@(busy || string.IsNullOrWhiteSpace(topic))" @onclick="Generate">@if (busy) { <span class="spinner"></span>
+                <span>Подбираем вопросы…</span> } else { <Icon Name="sparkles" />
+                <span>@(questions.Count == 0 ? "Сгенерировать вопросы" : "Сгенерировать заново")</span>
+                <Icon Name="arrow" /> }</button>
+            <div class="generator-disclaimer">
+                <Icon Name="help" />
+                <span>Демонстрация на готовых примерах. Уровень и отдел сохраняются в настройках теста; внешний ИИ не подключён.</span>
+            </div>
+        </div>
+    </section>
+    <section class="generator-preview">
+        <div class="preview-heading">
+            <div>
+                <span class="eyebrow">ВАШ БУДУЩИЙ ТЕСТ</span>
+                <h2>@(questions.Count == 0 ? "Здесь появятся вопросы" : "Отличное начало. Добавьте свой опыт.")</h2>
+            </div>
+            <span class="badge badge-neutral">@(questions.Count == 0 ? "Предпросмотр" : $"{questions.Count} вопросов")</span>
+        </div>
+        @if (questions.Count == 0) { <div class="generator-empty">
+            <div class="generation-orb">
+                <Icon Name="sparkles" />
+            </div>
+            <h3>Большие идеи начинаются<br />с одного вопроса</h3>
+            <p>Выберите тему и нажмите «Сгенерировать».<br />Вопросы и варианты ответов появятся здесь.</p>
+            <div class="empty-steps">
+                <span>
+                    <i>1</i>Задайте тему</span>
+                <span>
+                    <i>2</i>Проверьте вопросы</span>
+                <span>
+                    <i>3</i>Назначьте команде</span>
+            </div>
+            <div class="preview-sample">
+                <span class="sample-label">ТАК МОЖЕТ ВЫГЛЯДЕТЬ ВОПРОС</span>
+                <strong>Как лучше начать разговор с новым клиентом?</strong>
+                <span>
+                    <i class="sample-check">✓</i>Выяснить его задачу и ожидаемый результат</span>
+                <span>
+                    <i></i>Сразу перечислить все функции продукта</span>
+            </div>
+        </div> }
+        else { <div class="generation-success">
+            <Icon Name="check-circle" />
+            <span>Примеры готовы. Отредактируйте текст и отметьте правильный ответ.</span>
+        </div>
+        <div class="panel test-title-editor">
+            <label class="field-label" for="test-title">Название теста</label>
+            <input id="test-title" maxlength="120" @bind="title" />
+            <label class="field-label" for="test-description">Описание</label>
+            <textarea id="test-description" rows="2" @bind="description">
+            </textarea>
+        </div>@for (var i = 0; i < questions.Count; i++) { var index = i; var question = questions[i]; <article class="panel question-editor" @key="question">
+            <div class="question-editor-heading">
+                <span>ВОПРОС @((index + 1).ToString("D2"))</span>
+                <button class="icon-button" aria-label="@($"Удалить вопрос {index + 1}")" @onclick="() => questions.RemoveAt(index)">
+                    <Icon Name="trash" />
+                </button>
+            </div>
+            <textarea class="question-text" aria-label="@($"Текст вопроса {index + 1}")" rows="2" @bind="question.Text">
+            </textarea>
+            <div class="answer-edit-list">@for (var j = 0; j < 4; j++) { var option = j; <div class="answer-edit @(question.CorrectIndex == option ? "correct" : "")">
+                    <input type="radio" name="@($"correct-{index}")" aria-label="@($"Правильный ответ {option + 1} на вопрос {index + 1}")" checked="@(question.CorrectIndex == option)" @onchange="() => question.CorrectIndex = option" />
+                    <input aria-label="@($"Вариант {option + 1} вопроса {index + 1}")" @bind="question.Options[option]" />
+                </div> }</div>
+            <label class="field-label" for="@($"explanation-{index}")">Объяснение ответа</label>
+            <textarea id="@($"explanation-{index}")" rows="2" @bind="question.Explanation">
+            </textarea>
+        </article> }<div class="save-test-bar">
+            <span>
+                <Icon Name="shield" />Проверьте содержание перед назначением</span>
+            <button class="btn btn-primary" disabled="@(questions.Count == 0)" @onclick="Save">Сохранить в библиотеку<Icon Name="arrow" />
+            </button>
+        </div> }
+    </section>
+</div>
+@code {
+    private string topic = "", context = "", department = "Все отделы", difficulty = "Средний", title = "", description = "";
+    private int count = 5, duration = 15, passScore = 70;
+    private bool busy;
+    private string? error;
+    private readonly string[] Suggestions = ["Работа с клиентом", "Информационная безопасность", "Адаптация сотрудников"];
+    private List<EditableQuestion> questions = [];
+    private async Task Generate()
+    {
+        error = null;
+        if (duration is < 5 or > 120 || passScore is < 1 or > 100) { error = "Укажите время от 5 до 120 минут и проходной балл от 1 до 100%."; return; }
+        busy = true;
+        try
+        {
+            await Task.Delay(350);
+            questions = GeneratorService.Generate(topic, department, difficulty, count, context).Select(q => new EditableQuestion { Text = q.Text, Options = q.Options.ToArray(), CorrectIndex = q.CorrectIndex, Explanation = q.Explanation }).ToList();
+            title = topic.Trim();
+            description = $"Проверка знаний по теме «{title}». Демонстрационные вопросы для проверки знаний команды.";
+        }
+        catch (ArgumentException ex) { error = ex.Message; }
+        finally { busy = false; }
+    }
+    private void Save()
+    {
+        error = null;
+        if (duration is < 5 or > 120 || passScore is < 1 or > 100) { error = "Укажите время от 5 до 120 минут и проходной балл от 1 до 100%."; return; }
+        try
+        {
+            var test = Store.AddTest(title, description, department, difficulty, duration, passScore, questions.Select(q => new Question(q.Text.Trim(), q.Options.Select(o => o.Trim()).ToArray(), q.CorrectIndex, q.Explanation.Trim())).ToArray());
+            Navigation.NavigateTo($"/tests/{test.Id}?created=true");
+        }
+        catch (ArgumentException ex) { error = ex.Message; }
+    }
+    private sealed class EditableQuestion
+    {
+        public string Text { get; set; } = "";
+        public string[] Options { get; set; } = [];
+        public int CorrectIndex { get; set; }
+        public string Explanation { get; set; } = "";
+    }
+}

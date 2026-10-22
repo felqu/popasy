@@ -1,0 +1,197 @@
+@inherits LayoutComponentBase
+@inject NavigationManager Navigation
+@inject WorkspaceStore Store
+@implements IDisposable
+
+<div class="app-shell">
+    @if (mobileOpen) { <button class="sidebar-backdrop" aria-label="Закрыть меню" @onclick="() => mobileOpen = false">
+    </button> }
+    <aside class="sidebar @(mobileOpen ? "is-open" : "")">
+        <a href="/" class="brand" aria-label="Forma — обзор">
+            <span class="brand-mark">
+                <i></i>
+                <i></i>
+                <i></i>
+                <i></i>
+            </span>forma<span class="brand-dot">.</span>
+        </a>
+        <div class="workspace-switch">
+            <span class="workspace-symbol">F</span>
+            <div>
+                <strong>Команда Forma</strong>
+                <small>Демо-пространство</small>
+            </div>
+            <span class="workspace-live"></span>
+        </div>
+        <div class="nav-caption">УПРАВЛЕНИЕ</div>
+        <nav class="main-nav" aria-label="Главная навигация">
+            <NavLink href="/" Match="NavLinkMatch.All">
+                <Icon Name="grid" />
+                <span>Обзор</span>
+            </NavLink>
+            <NavLink href="/tests">
+                <Icon Name="tests" />
+                <span>Библиотека тестов</span>
+                <span class="nav-count">@Store.Tests.Length</span>
+            </NavLink>
+            <NavLink href="/generator">
+                <Icon Name="sparkles" />
+                <span>ИИ-генератор</span>
+                <span class="tiny-tag">AI</span>
+            </NavLink>
+            <NavLink href="/employees">
+                <Icon Name="users" />
+                <span>Сотрудники</span>
+            </NavLink>
+            <NavLink href="/results">
+                <Icon Name="chart" />
+                <span>Результаты</span>
+            </NavLink>
+        </nav>
+        <div class="sidebar-bottom">
+            <div class="sidebar-ai">
+                <span class="small-spark">
+                    <Icon Name="sparkles" />
+                </span>
+                <strong>Меньше рутины.<br />Больше развития.</strong>
+                <p>Создавайте тесты с помощью ИИ за пару минут.</p>
+                <a href="/generator">Попробовать генератор <Icon Name="arrow" />
+                </a>
+            </div>
+            <button class="sidebar-help" @onclick="() => helpOpen = true">
+                <Icon Name="help" />О пространстве<span class="key-hint">?</span>
+            </button>
+            <div class="sidebar-footer">FORMA © @DateTime.Today.Year <span>Сделано для людей</span>
+            </div>
+        </div>
+    </aside>
+    <div class="main-shell">
+        <header class="topbar">
+            <div class="topbar-left">
+                <button class="icon-button mobile-menu" aria-label="Открыть меню" @onclick="() => mobileOpen = true">
+                    <Icon Name="menu" />
+                </button>
+                <span class="breadcrumb-root">Рабочее пространство</span>
+                <Icon Name="chevron" Class="breadcrumb-chevron" />
+                <span>@CurrentPage</span>
+            </div>
+            <div class="topbar-right">
+                <button id="workspace-search" class="search-trigger" @onclick="OpenSearch">
+                    <Icon Name="search" />
+                    <span>Поиск по пространству</span>
+                    <span class="key-hint">/</span>
+                </button>
+                <span class="topbar-divider"></span>
+                <div class="dropdown-anchor">
+                    <button class="icon-button notification-button" aria-label="Уведомления" @onclick="ToggleNotifications">
+                        <Icon Name="bell" />
+                        <i></i>
+                    </button>
+                    @if (notificationsOpen) { <div class="dropdown notifications">
+                        <strong>Рабочий ритм</strong>
+                        <p>@Store.Assignments.Count(a => a.CompletedAt == null) тестов ожидают прохождения.</p>
+                        <a href="/results">Открыть назначения <Icon Name="arrow" />
+                        </a>
+                        <small>Демо-данные · без отправки уведомлений</small>
+                    </div> }
+                </div>
+                <div class="dropdown-anchor">
+                    <button class="profile-button" @onclick="ToggleProfile" aria-label="Меню профиля">
+                        <span class="avatar avatar-admin">АК</span>
+                        <span class="profile-name">
+                            <strong>Алексей К.</strong>
+                            <small>Администратор</small>
+                        </span>
+                        <Icon Name="down" />
+                    </button>
+                    @if (profileOpen) { <div class="dropdown profile-dropdown">
+                        <strong>Демонстрационный профиль</strong>
+                        <p>Общее пространство без авторизации.</p>
+                        <button @onclick="() => { helpOpen = true; profileOpen = false; }">О проекте</button>
+                        <a href="/swagger" target="_blank" rel="noopener">Документация API <Icon Name="arrow" />
+                        </a>
+                    </div> }
+                </div>
+            </div>
+        </header>
+        <main class="page-content" id="main-content">@Body</main>
+        <footer class="main-footer">
+            <span>
+                <span class="status-dot"></span> Пространство для роста вашей команды</span>
+            <span>Демонстрационная версия</span>
+        </footer>
+    </div>
+</div>
+
+@if (searchOpen)
+{
+<div class="modal-backdrop" @onclick="() => searchOpen = false">
+    <section class="modal search-modal" role="dialog" aria-modal="true" aria-labelledby="search-title" @onclick:stopPropagation="true">
+        <div class="modal-heading">
+            <h2 id="search-title">Поиск по пространству</h2>
+            <button class="icon-button" aria-label="Закрыть поиск" @onclick="() => searchOpen = false">
+                <Icon Name="close" />
+            </button>
+        </div>
+        <div class="input-with-icon">
+            <Icon Name="search" />
+            <input aria-label="Найти тест или сотрудника" placeholder="Название теста или имя сотрудника…" @bind="search" @bind:event="oninput" autofocus />
+        </div>
+        <div class="search-results">
+            @foreach (var test in Store.Tests.Where(t => t.Title.Contains(search, StringComparison.OrdinalIgnoreCase)).Take(4)) { <a href="/tests/@test.Id">
+                <span class="tile-icon violet">
+                    <Icon Name="tests" />
+                </span>
+                <span>
+                    <strong>@test.Title</strong>
+                    <small>Тест · @test.Questions.Length вопросов</small>
+                </span>
+                <Icon Name="chevron" />
+            </a> }
+            @foreach (var person in Store.Employees.Where(e => e.Name.Contains(search, StringComparison.OrdinalIgnoreCase)).Take(3)) { <a href="/employees?search=@Uri.EscapeDataString(person.Name)">
+                <span class="avatar @person.Color">@person.Initials</span>
+                <span>
+                    <strong>@person.Name</strong>
+                    <small>@person.Department</small>
+                </span>
+                <Icon Name="chevron" />
+            </a> }
+            @if (!Store.Tests.Any(t => t.Title.Contains(search, StringComparison.OrdinalIgnoreCase)) && !Store.Employees.Any(e => e.Name.Contains(search, StringComparison.OrdinalIgnoreCase))) { <EmptyState /> }
+        </div>
+    </section>
+</div>
+}
+@if (helpOpen)
+{
+<div class="modal-backdrop" @onclick="() => helpOpen = false">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="help-title" @onclick:stopPropagation="true">
+        <div class="modal-heading">
+            <span class="tile-icon violet">
+                <Icon Name="sparkles" />
+            </span>
+            <button class="icon-button" aria-label="Закрыть" @onclick="() => helpOpen = false">
+                <Icon Name="close" />
+            </button>
+        </div>
+        <h2 id="help-title">Знакомьтесь, Forma</h2>
+        <p class="muted">Пространство для оценки знаний и развития команды.</p>
+        <div class="info-note">Это интерактивная демонстрация. Генератор использует готовые примеры, внешние ИИ-сервисы не подключены. Изменения доступны всем посетителям и сохраняются в памяти до перезапуска сервера. Письма сотрудникам не отправляются.</div>
+        <a href="/generator" class="btn btn-primary">Создать первый тест <Icon Name="arrow" />
+        </a>
+    </section>
+</div>
+}
+<div id="blazor-error-ui">Соединение прервано. <a href="">Перезагрузить страницу</a>
+    <button class="dismiss" aria-label="Закрыть">×</button>
+</div>
+@code {
+    private bool mobileOpen, searchOpen, notificationsOpen, profileOpen, helpOpen;
+    private string search = "";
+    private string CurrentPage => new Uri(Navigation.Uri).AbsolutePath.Split('/').ElementAtOrDefault(1) switch { "tests" => "Библиотека тестов", "generator" => "ИИ-генератор", "employees" => "Сотрудники", "results" => "Результаты", "take" => "Прохождение теста", _ => "Обзор" };
+    protected override void OnInitialized() => Navigation.LocationChanged += OnLocationChanged;
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs args) { mobileOpen = searchOpen = notificationsOpen = profileOpen = false; InvokeAsync(StateHasChanged); }
+    private void OpenSearch() { search = ""; searchOpen = true; notificationsOpen = profileOpen = false; }
+    private void ToggleNotifications() { notificationsOpen = !notificationsOpen; profileOpen = false; }
+    private void ToggleProfile() { profileOpen = !profileOpen; notificationsOpen = false; }
+    public void Dispose() => Navigation.LocationChanged -= OnLocationChanged;
+}

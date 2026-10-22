@@ -1,0 +1,151 @@
+@page "/employees"
+@inject WorkspaceStore Store
+<PageTitle>Сотрудники — Forma</PageTitle>
+<PageHeader Eyebrow="ЛЮДИ — В ЦЕНТРЕ" Title="Ваша команда" Description="Помогайте каждому расти и видеть свой следующий шаг.">
+    <button class="btn btn-primary" @onclick="() => showAdd = true">
+        <Icon Name="plus" />Добавить сотрудника</button>
+</PageHeader>
+<section class="employee-summary">
+    <div>
+        <span class="metric-icon violet">
+            <Icon Name="users" />
+        </span>
+        <span>
+            <strong>@Store.Employees.Length</strong>
+            <small>сотрудников в команде</small>
+        </span>
+    </div>
+    <div>
+        <span class="metric-icon blue">
+            <Icon Name="grid" />
+        </span>
+        <span>
+            <strong>@Store.Employees.Select(e => e.Department).Distinct().Count()</strong>
+            <small>отдела в пространстве</small>
+        </span>
+    </div>
+    <div>
+        <span class="metric-icon green">
+            <Icon Name="check-circle" />
+        </span>
+        <span>
+            <strong>@Store.Assignments.Count(a => a.CompletedAt != null)</strong>
+            <small>завершённых тестов</small>
+        </span>
+    </div>
+    <div class="summary-caption">
+        <Icon Name="sparkles" />
+        <p>У каждой команды —<br />свой потенциал.</p>
+    </div>
+</section>
+@if (message != null) { <div class="alert alert-success" role="status">
+    <Icon Name="check-circle" />@message<button class="icon-button" aria-label="Закрыть" @onclick="() => message = null">
+        <Icon Name="close" />
+    </button>
+</div> }
+<section class="panel">
+    <div class="panel-heading employee-table-heading">
+        <div>
+            <h2>Все сотрудники <span class="count-pill">@Filtered.Length</span>
+            </h2>
+            <p>Знакомые лица. Новые возможности.</p>
+        </div>
+        <div class="toolbar-filters">
+            <div class="input-with-icon search-input">
+                <Icon Name="search" />
+                <input aria-label="Найти сотрудника" placeholder="Имя, должность или email…" @bind="search" @bind:event="oninput" />
+            </div>
+            <select aria-label="Отдел сотрудника" @bind="department">
+                <option value="">Все отделы</option>@foreach (var d in WorkspaceStore.Departments.Where(d => d != "Все отделы")) { <option>@d</option> }</select>
+        </div>
+    </div>
+    @if (Filtered.Length == 0) { <EmptyState>
+        <button class="btn btn-secondary" @onclick="ResetFilters">Сбросить фильтры</button>
+    </EmptyState> }
+    else { <div class="table-scroll">
+        <table class="employee-table">
+            <thead>
+                <tr>
+                    <th>СОТРУДНИК</th>
+                    <th>ОТДЕЛ</th>
+                    <th>ПРОЙДЕНО ТЕСТОВ</th>
+                    <th>СРЕДНИЙ БАЛЛ</th>
+                    <th>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>@foreach (var e in Filtered) { var attempts = Store.Assignments.Where(a => a.EmployeeId == e.Id).ToArray(); var completed = attempts.Where(a => a.CompletedAt != null).ToArray(); var average = completed.Length == 0 ? 0 : (int)Math.Round(completed.Average(a => a.Score ?? 0)); <tr>
+                    <td>
+                        <div class="person-cell">
+                            <span class="avatar @e.Color">@e.Initials</span>
+                            <span>
+                                <strong>@e.Name</strong>
+                                <small>@e.Role</small>
+                                <small class="employee-email">@e.Email</small>
+                            </span>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="department-tag">@e.Department</span>
+                    </td>
+                    <td>
+                        <span class="table-number">@completed.Length <span class="muted">/ @attempts.Length</span>
+                        </span>
+                    </td>
+                    <td>@if (completed.Length == 0) { <span class="muted">Ещё нет результатов</span> } else { <span class="score-value @(average >= 70 ? "positive" : "warning-text")">@average<span>%</span>
+                        </span> }</td>
+                    <td>
+                        <a class="text-link" href="/results?employee=@e.Id">Результаты<Icon Name="arrow" />
+                        </a>
+                    </td>
+                </tr> }</tbody>
+        </table>
+    </div>
+    <div class="table-footer">
+        <span>Показано @Filtered.Length из @Store.Employees.Length сотрудников</span>
+        <span>Демо-пространство Forma</span>
+    </div> }</section>
+@if (showAdd) { <div class="modal-backdrop" @onclick="Close">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="employee-title" @onclick:stopPropagation="true">
+        <div class="modal-heading">
+            <span class="tile-icon violet">
+                <Icon Name="users" />
+            </span>
+            <button class="icon-button" aria-label="Закрыть" @onclick="Close">
+                <Icon Name="close" />
+            </button>
+        </div>
+        <h2 id="employee-title">Новый человек в команде</h2>
+        <p class="muted">Добавьте коллегу, чтобы назначать тесты и видеть прогресс.</p>
+        <form @onsubmit="AddEmployee" @onsubmit:preventDefault="true">
+            <label class="field-label" for="employee-name">Имя и фамилия</label>
+            <input id="employee-name" required maxlength="100" @bind="name" placeholder="Например, Анна Смирнова" />
+            <label class="field-label" for="employee-email">Рабочий email</label>
+            <input id="employee-email" type="email" required maxlength="150" @bind="email" placeholder="anna@company.ru" />
+            <label class="field-label" for="employee-role">Должность</label>
+            <input id="employee-role" required maxlength="100" @bind="role" placeholder="Например, менеджер по продажам" />
+            <label class="field-label" for="employee-department">Отдел</label>
+            <select id="employee-department" @bind="newDepartment">@foreach (var d in WorkspaceStore.Departments.Where(d => d != "Все отделы")) { <option>@d</option> }</select>@if (error != null) { <div class="alert alert-error" role="alert">@error</div> }<div class="info-note compact">Данные сохранятся в демо-пространстве. Приглашение по email не отправляется.</div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" @onclick="Close">Отмена</button>
+                <button type="submit" class="btn btn-primary">Добавить сотрудника<Icon Name="plus" />
+                </button>
+            </div>
+        </form>
+    </section>
+</div> }
+@code {
+    [SupplyParameterFromQuery(Name = "search")] public string? InitialSearch { get; set; }
+    private string search = "", department = "", name = "", email = "", role = "", newDepartment = "Продажи";
+    private string? error, message;
+    private bool showAdd;
+    protected override void OnParametersSet() => search = InitialSearch ?? "";
+    private Employee[] Filtered => Store.Employees.Where(e => (department == "" || e.Department == department) && (e.Name + " " + e.Role + " " + e.Email).Contains(search, StringComparison.OrdinalIgnoreCase)).ToArray();
+    private void ResetFilters() { search = department = ""; }
+    private void Close() { showAdd = false; error = null; }
+    private void AddEmployee()
+    {
+        try { var employee = Store.AddEmployee(name, role, newDepartment, email); message = $"{employee.Name} теперь в команде."; name = email = role = ""; search = department = ""; Close(); }
+        catch (ArgumentException ex) { error = ex.Message; }
+    }
+}
